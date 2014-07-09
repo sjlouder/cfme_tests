@@ -5,6 +5,7 @@ from utils.update import update
 import utils.error as error
 import utils.randomness as random
 import cfme.fixtures.pytest_selenium as sel
+import cfme.infrastructure.virtual_machines as vms
 from cfme import Credential
 from cfme import login
 from cfme.web_ui.menu import nav
@@ -165,6 +166,20 @@ def _go_to(dest):
     return lambda: nav.go_to(dest)
 
 
+def show_vms():
+    """
+    Check that no VMs exists under user
+    Logout
+    Login as administrator
+    Check that VMs exist
+    """
+    assert vms.get_all_vms()
+    login.logout()
+    login.login_admin()
+    assert vms.get_all_vms()
+
+
+## TODO: This is returning the wrong value. Investigate
 cat_name = version.pick({version.LOWEST: "Settings & Operations",
                          "5.3": "Configure"})
 
@@ -175,20 +190,22 @@ cat_name = version.pick({version.LOWEST: "Settings & Operations",
                                  [[cat_name, 'Tasks'], True]]),
       {'tasks': lambda: sel.click(tasks.buttons.default)},  # can only access one thing
       {
-          'my services': _go_to('my_services'),
-          'chargeback': _go_to('chargeback'),
-          'clouds providers': _go_to('clouds_providers'),
-          'infrastructure providers': _go_to('infrastructure_providers'),
-          'control explorer': _go_to('control_explorer'),
-          'automate explorer': _go_to('automate_explorer')}],
+        #   'my services': _go_to('my_services'),
+        #   'chargeback': _go_to('chargeback'),
+        #   'clouds providers': _go_to('clouds_providers'),
+        #   'infrastructure providers': _go_to('infrastructure_providers'),
+        #   'control explorer': _go_to('control_explorer'),
+        #   'automate explorer': _go_to('automate_explorer'),
+          'list vms': show_vms}],
      [_mk_role(product_features=[[['Everything'], True]]),  # full permissions
       {
-          'my services': _go_to('my_services'),
-          'chargeback': _go_to('chargeback'),
-          'clouds providers': _go_to('clouds_providers'),
-          'infrastructure providers': _go_to('infrastructure_providers'),
-          'control explorer': _go_to('control_explorer'),
-          'automate explorer': _go_to('automate_explorer')},
+        #   'my services': _go_to('my_services'),l
+        #   'chargeback': _go_to('chargeback'),
+        #   'clouds providers': _go_to('clouds_providers'),
+        #   'infrastructure providers': _go_to('infrastructure_providers'),
+        #   'control explorer': _go_to('control_explorer'),
+        #   'automate explorer': _go_to('automate_explorer'),
+          'list vms': show_vms},
       {}]])
 # @pytest.mark.bugzilla(1035399) # work around instead of skip
 def test_permissions(role, allowed_actions, disallowed_actions):
