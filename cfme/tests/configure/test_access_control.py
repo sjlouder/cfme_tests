@@ -166,47 +166,48 @@ def _go_to(dest):
     return lambda: nav.go_to(dest)
 
 
-def show_vms():
+def _test_show_vms():
     """
     Check that no VMs exists under user
     Logout
     Login as administrator
     Check that VMs exist
     """
-    assert vms.get_all_vms()
+    user_vm_list = vms.get_all_vms()
     login.logout()
     login.login_admin()
-    assert vms.get_all_vms()
+    assert vms.get_all_vms() == user_vm_list
 
 
-## TODO: This is returning the wrong value. Investigate
 cat_name = version.pick({version.LOWEST: "Settings & Operations",
                          "5.3": "Configure"})
+
+
+NAV_TESTS = {
+
+    'my services': _go_to('my_services'),
+    'chargeback': _go_to('chargeback'),
+    'clouds providers': _go_to('clouds_providers'),
+    'infrastructure providers': _go_to('infrastructure_providers'),
+    'control explorer': _go_to('control_explorer'),
+    'automate explorer': _go_to('automate_explorer'),
+    'dashboard': _go_to('dashboard'),
+    'virutal machines': _go_to('infrastructure_virtual_machines'),
+    'configuration': _go_to('configuration'),
+    'automate customization':_go_to('automate_customization'),
+    'my settings': _go_to('my_settings'),
+    'add provider': _go_to('infrastructure_provider_new'),
+    'list vms': _test_show_vms
+
+}
 
 
 @pytest.mark.parametrize(
     'role,allowed_actions,disallowed_actions',
     [[_mk_role(product_features=[[['Everything'], False],  # minimal permission
                                  [[cat_name, 'Tasks'], True]]),
-      {'tasks': lambda: sel.click(tasks.buttons.default)},  # can only access one thing
-      {
-        #   'my services': _go_to('my_services'),
-        #   'chargeback': _go_to('chargeback'),
-        #   'clouds providers': _go_to('clouds_providers'),
-        #   'infrastructure providers': _go_to('infrastructure_providers'),
-        #   'control explorer': _go_to('control_explorer'),
-        #   'automate explorer': _go_to('automate_explorer'),
-          'list vms': show_vms}],
-     [_mk_role(product_features=[[['Everything'], True]]),  # full permissions
-      {
-        #   'my services': _go_to('my_services'),l
-        #   'chargeback': _go_to('chargeback'),
-        #   'clouds providers': _go_to('clouds_providers'),
-        #   'infrastructure providers': _go_to('infrastructure_providers'),
-        #   'control explorer': _go_to('control_explorer'),
-        #   'automate explorer': _go_to('automate_explorer'),
-          'list vms': show_vms},
-      {}]])
+      {'tasks': lambda: sel.click(tasks.buttons.default)}, NAV_TESTS],  # can only access one thing
+     [_mk_role(product_features=[[['Everything'], True]]), NAV_TESTS, {}]])  # full permissions
 # @pytest.mark.bugzilla(1035399) # work around instead of skip
 def test_permissions(role, allowed_actions, disallowed_actions):
     # create a user and role
@@ -227,6 +228,7 @@ def test_permissions(role, allowed_actions, disallowed_actions):
         for name, action_thunk in disallowed_actions.items():
             try:
                 with error.expected(Exception):
+                    print str(name) + ", " + str(action_thunk)
                     action_thunk()
             except error.UnexpectedSuccessException as e:
                 fails[name] = e
@@ -252,6 +254,12 @@ def single_task_permission_test(product_features, actions):
 
 
 def test_permissions_role_crud():
-    single_task_permission_test([['Settings & Operations', 'Configuration'],
+    single_task_permission_test([[cat_name, 'Configuration'],
                                  ['Services', 'Catalogs Explorer']],
                                 {'Role CRUD': test_role_crud})
+
+
+def test_permissions_add_provider():
+    single_task_permission_test([['Infrastructure', 'Infrastructure Providers', 'Modify'],
+                                 ['Infrastructure', 'Infrastructure Providers', 'View']],
+                                {'Add provider': _go_to('infrastructure_provider_new')})
