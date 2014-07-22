@@ -210,9 +210,7 @@ def _setup_providers(cloud_or_infra, validate, check_existing):
         added_providers.append(provider)
 
     if validate:
-        map(methodcaller('validate'), [p for p in added_providers if
-            conf.cfme_data['management_systems'][p.key]['type'] != 'openstack'])
-
+        map(methodcaller('validate'), added_providers)
     return added_providers
 
 

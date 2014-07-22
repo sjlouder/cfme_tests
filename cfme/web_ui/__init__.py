@@ -1823,7 +1823,6 @@ class Quadicon(Pretty):
         self._name = name
         self._qtype = qtype
         self._quad_data = self._quads[self._qtype]
-        print "Quadicon name: " + self._name
 
     def checkbox(self):
         """ Returns:  a locator for the internal checkbox for the quadicon"""

@@ -744,7 +744,6 @@ def force_navigate(page_name, _tries=0, *args, **kwargs):
             recycle = True
         else:
             logger.error("Could not determine the reason for failing the navigation. Reraising.")
-            print page_name
             raise
 
     if recycle:

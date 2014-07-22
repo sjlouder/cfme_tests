@@ -6,11 +6,12 @@ from utils.update import update
 import utils.error as error
 import utils.randomness as random
 import cfme.fixtures.pytest_selenium as sel
-import cfme.infrastructure.virtual_machines as vms
 from cfme import Credential
 from cfme import login
+from cfme.infrastructure.virtual_machines import get_all_vms
 from cfme.web_ui.menu import nav
 from cfme.configure import tasks
+from utils.log import logger
 from utils import version
 
 usergrp = ac.Group(description='EvmGroup-user')
@@ -18,11 +19,7 @@ usergrp = ac.Group(description='EvmGroup-user')
 
 # due to pytest.mark.bugzilla(1035399), non admin users can't login
 # with no providers added
-#pytestmark = [pytest.mark.usefixtures("setup_cloud_providers(False)")]
-# How to run setup_cloud_providers with argument ^^
-@pytest.fixture(scope='function')
-def provider_setup():
-    provider_utils.setup_cloud_providers(False)
+pytestmark = [pytest.mark.usefixtures("setup_cloud_providers")]
 
 
 def new_credential():
@@ -156,37 +153,36 @@ def test_assign_user_to_new_group():
 
 
 def _test_cloud_provider_crud():
-    print "entering _test_cloud_provider_crud"
+    logger.info("Begin: _test_cloud_provider_crud")
     provider_utils.clear_cloud_providers()    # Start from baseline
-    # Due to a bug in refreshing openstack providers, they are filtered out of the list of providers
-    provider_list = [p for p in provider_utils.list_cloud_providers() if not p.startswith('rhos')]
-    print provider_list
-    random_provider = random.pick(provider_list, 1)[0]
-    print "cloud: random_provider: " + random_provider
-    provider_instance = provider_utils.setup_provider(random_provider, validate=False)
-    print "cloud provider setup"
+    random_provider = random.pick(provider_utils.list_cloud_providers(), 1)[0]
+    logger.debug("Setting up cloud provider: " + random_provider)
+    provider_instance = provider_utils.setup_provider(random_provider)
+    logger.debug("Cloud provider has been setup. Updating name...")
     provider_instance.update({'name': random_provider + '-edited'})
-    print "Provider_instance.name: " + provider_instance.name
-    print "cloud provider edited"
+    logger.debug("Cloud provider edited. New Name: " + provider_instance.name +
+                 ". Now attempting to delete.")
     provider_instance.delete(False)
-    print "cloud provider deleted. Waiting for it to show up in CFME"
+    logger.debug("cloud provider deleted. Waiting for it to show up in CFME")
     provider_utils.wait_for_provider_delete(provider_instance)
-    print "leaving _test_cloud_provider_crud"
+    logger.debug("CFME updated correctly. End _test_cloud_provider_crud")
 
 
 def _test_infra_provider_crud():
-    print "entering _test_infra_provider_crud"
+    logger.info("Begin: _test_infra_provider_crud")
     provider_utils.clear_infra_providers()    # Start from baseline
-    print provider_utils.list_infra_providers()
+    logger.debug(provider_utils.list_infra_providers())
     random_provider = random.pick(provider_utils.list_infra_providers(), 1)[0]
-    print "infra: random_provider: " + random_provider
-    provider_instance = provider_utils.setup_provider(random_provider, validate=False)
-    print "infra provider setup"
+    logger.debug("Setting up infra provider: " + random_provider)
+    provider_instance = provider_utils.setup_provider(random_provider, False)
+    logger.debug("Cloud provider has been setup. Now updating name")
     provider_instance.update({'name': random_provider + '-edited'})
+    logger.debug("Infra provider edited. New Name: " + provider_instance.name +
+                 ". Now attempting to delete.")
     provider_instance.delete(False)
-    print "Infra provider deleted. Waiting for it to show up in CFME"
+    logger.debug("Infra provider deleted. Waiting for it to show up in CFME")
     provider_utils.wait_for_provider_delete(provider_instance)
-    print "leaving _test_infra_provider_crud"
+    logger.debug("CFME updated correctly. End _test_infra_provider_crud")
 
 
 def _mk_role(name=None, vm_restriction=None, product_features=None):
@@ -207,10 +203,10 @@ def _go_to(dest):
 
 def _test_show_vms():
     """Check that no VMs exists under user"""
-    user_vm_list = vms.get_all_vms()
+    user_vm_list = get_all_vms()
     login.logout()
     login.login_admin()
-    assert vms.get_all_vms() == user_vm_list
+    assert get_all_vms() == user_vm_list
 
 
 cat_name = version.pick({version.LOWEST: "Settings & Operations",
@@ -231,8 +227,8 @@ NAV_TESTS = {
     'automate customization':_go_to('automate_customization'),
     'my settings': _go_to('my_settings'),
     'add provider': _go_to('infrastructure_provider_new'),
-    'list vms': _test_show_vms
-
+    'virtual_machines': _go_to('infra_vms'),
+    'templates': _go_to('infra_templates')
 }
 
 
@@ -263,7 +259,7 @@ def test_permissions(role, allowed_actions, disallowed_actions):
         for name, action_thunk in disallowed_actions.items():
             try:
                 with error.expected(Exception):
-                    print str(name) + ", " + str(action_thunk)
+                    logger.debug(str(name) + ", " + str(action_thunk))
                     action_thunk()
             except error.UnexpectedSuccessException as e:
                 raise e

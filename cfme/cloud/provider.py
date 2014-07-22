@@ -198,12 +198,8 @@ class Provider(Updateable):
         Args:
             cancel: Whether to cancel the deletion, defaults to True
         """
-        print "0"
-        # sel.pytest.set_trace()
         sel.force_navigate('cloud_provider', context={'provider': self})
-        print "1"
         cfg_btn('Remove this Cloud Provider from the VMDB', invokes_alert=True)
-        print "2"
         sel.handle_alert(cancel=cancel)
         if not cancel:
             flash.assert_message_match(
