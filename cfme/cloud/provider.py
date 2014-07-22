@@ -186,9 +186,10 @@ class Provider(Updateable):
         fill(properties_form, self._form_mapping(**updates))
         fill(credential_form, updates.get('credentials', None), validate=validate_credentials)
         self._submit(cancel, edit_page.save_button)
-        name = updates['name'] or self.name
+        self.name = updates['name'] or self.name
+        print "self.name: " + self.name
         if not cancel:
-            flash.assert_message_match('Cloud Provider "%s" was saved' % name)
+            flash.assert_message_match('Cloud Provider "%s" was saved' % self.name)
 
     def delete(self, cancel=True):
         """
@@ -197,9 +198,12 @@ class Provider(Updateable):
         Args:
             cancel: Whether to cancel the deletion, defaults to True
         """
-
+        print "0"
+        # sel.pytest.set_trace()
         sel.force_navigate('cloud_provider', context={'provider': self})
+        print "1"
         cfg_btn('Remove this Cloud Provider from the VMDB', invokes_alert=True)
+        print "2"
         sel.handle_alert(cancel=cancel)
         if not cancel:
             flash.assert_message_match(
@@ -218,16 +222,14 @@ class Provider(Updateable):
 
         stats_to_match = ['num_template', 'num_vm']
         client = self.get_mgmt_system()
-
         # Bail out here if the stats match.
         if self._do_stats_match(client, stats_to_match):
             client.disconnect()
             return
-
         # Otherwise refresh relationships and hand off to wait_for
+        # sel.pytest.set_trace()
         tb.select("Configuration", "Refresh Relationships and Power States", invokes_alert=True)
         sel.handle_alert()
-
         ec, tc = wait_for(self._do_stats_match,
                           [client, stats_to_match],
                           message="do_stats_match",

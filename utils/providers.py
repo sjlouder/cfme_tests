@@ -210,7 +210,8 @@ def _setup_providers(cloud_or_infra, validate, check_existing):
         added_providers.append(provider)
 
     if validate:
-        map(methodcaller('validate'), added_providers)
+        map(methodcaller('validate'), [p for p in added_providers if
+            conf.cfme_data['management_systems'][p.key]['type'] != 'openstack'])
 
     return added_providers
 
@@ -299,6 +300,14 @@ def clear_providers():
     wait_for_no_cloud_providers()
     wait_for_no_cloud_providers()
     perflog.stop('utils.providers.clear_providers')
+
+
+def wait_for_provider_delete(provider):
+    if (provider.key in list_cloud_providers()):
+        from cfme.cloud.provider import wait_for_provider_delete as wait_for_delete
+    else:
+        from cfme.infrastructure.provider import wait_for_provider_delete as wait_for_delete
+    wait_for_delete(provider)
 
 
 class UnknownProvider(Exception):

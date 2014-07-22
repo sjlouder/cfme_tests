@@ -179,9 +179,9 @@ class Provider(Updateable):
         fill(credential_form, updates.get('credentials', None), validate=validate_credentials)
         fill(credential_form, updates.get('candu', None), validate=validate_credentials)
         self._submit(cancel, form_buttons.save)
-        name = updates['name'] or self.name
+        self.name = updates['name'] or self.name
         if not cancel:
-            flash.assert_message_match('Infrastructure Provider "%s" was saved' % name)
+            flash.assert_message_match('Infrastructure Provider "%s" was saved' % self.name)
 
     def delete(self, cancel=True):
         """
@@ -219,8 +219,9 @@ class Provider(Updateable):
 
         # Otherwise refresh relationships and hand off to wait_for
         tb.select("Configuration", "Refresh Relationships and Power States", invokes_alert=True)
+        print "selected button"
         sel.handle_alert()
-
+        print "begining wait_for()"
         ec, tc = wait_for(self._do_stats_match,
                           [client, stats_to_match],
                           message="do_stats_match",

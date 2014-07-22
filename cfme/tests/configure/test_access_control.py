@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 import cfme.configure.access_control as ac
+import utils.providers as provider_utils
 from utils.update import update
 import utils.error as error
 import utils.randomness as random
@@ -17,7 +18,11 @@ usergrp = ac.Group(description='EvmGroup-user')
 
 # due to pytest.mark.bugzilla(1035399), non admin users can't login
 # with no providers added
-pytestmark = [pytest.mark.usefixtures("setup_cloud_providers")]
+#pytestmark = [pytest.mark.usefixtures("setup_cloud_providers(False)")]
+# How to run setup_cloud_providers with argument ^^
+@pytest.fixture(scope='function')
+def provider_setup():
+    provider_utils.setup_cloud_providers(False)
 
 
 def new_credential():
@@ -150,6 +155,40 @@ def test_assign_user_to_new_group():
     user.create()
 
 
+def _test_cloud_provider_crud():
+    print "entering _test_cloud_provider_crud"
+    provider_utils.clear_cloud_providers()    # Start from baseline
+    # Due to a bug in refreshing openstack providers, they are filtered out of the list of providers
+    provider_list = [p for p in provider_utils.list_cloud_providers() if not p.startswith('rhos')]
+    print provider_list
+    random_provider = random.pick(provider_list, 1)[0]
+    print "cloud: random_provider: " + random_provider
+    provider_instance = provider_utils.setup_provider(random_provider, validate=False)
+    print "cloud provider setup"
+    provider_instance.update({'name': random_provider + '-edited'})
+    print "Provider_instance.name: " + provider_instance.name
+    print "cloud provider edited"
+    provider_instance.delete(False)
+    print "cloud provider deleted. Waiting for it to show up in CFME"
+    provider_utils.wait_for_provider_delete(provider_instance)
+    print "leaving _test_cloud_provider_crud"
+
+
+def _test_infra_provider_crud():
+    print "entering _test_infra_provider_crud"
+    provider_utils.clear_infra_providers()    # Start from baseline
+    print provider_utils.list_infra_providers()
+    random_provider = random.pick(provider_utils.list_infra_providers(), 1)[0]
+    print "infra: random_provider: " + random_provider
+    provider_instance = provider_utils.setup_provider(random_provider, validate=False)
+    print "infra provider setup"
+    provider_instance.update({'name': random_provider + '-edited'})
+    provider_instance.delete(False)
+    print "Infra provider deleted. Waiting for it to show up in CFME"
+    provider_utils.wait_for_provider_delete(provider_instance)
+    print "leaving _test_infra_provider_crud"
+
+
 def _mk_role(name=None, vm_restriction=None, product_features=None):
     '''Create a thunk that returns a Role object to be used for perm
        testing.  name=None will generate a random name
@@ -167,12 +206,7 @@ def _go_to(dest):
 
 
 def _test_show_vms():
-    """
-    Check that no VMs exists under user
-    Logout
-    Login as administrator
-    Check that VMs exist
-    """
+    """Check that no VMs exists under user"""
     user_vm_list = vms.get_all_vms()
     login.logout()
     login.login_admin()
@@ -224,6 +258,7 @@ def test_permissions(role, allowed_actions, disallowed_actions):
             try:
                 action_thunk()
             except Exception as e:
+                raise e
                 fails[name] = e
         for name, action_thunk in disallowed_actions.items():
             try:
@@ -231,6 +266,7 @@ def test_permissions(role, allowed_actions, disallowed_actions):
                     print str(name) + ", " + str(action_thunk)
                     action_thunk()
             except error.UnexpectedSuccessException as e:
+                raise e
                 fails[name] = e
         if fails:
             raise Exception(fails)
@@ -259,7 +295,16 @@ def test_permissions_role_crud():
                                 {'Role CRUD': test_role_crud})
 
 
-def test_permissions_add_provider():
+def test_permissions_cloud_provider_crud():
+    single_task_permission_test([['Clouds', 'Cloud Providers', 'Modify'],
+                                 ['Clouds', 'Cloud Providers', 'View'],
+                                 ['Clouds', 'Cloud Providers','Operate', 'Refresh']],
+                                {'Add cloud provider': _test_cloud_provider_crud})
+
+
+def test_permissions_infra_provider_crud():
     single_task_permission_test([['Infrastructure', 'Infrastructure Providers', 'Modify'],
-                                 ['Infrastructure', 'Infrastructure Providers', 'View']],
-                                {'Add provider': _go_to('infrastructure_provider_new')})
+                                ['Infrastructure', 'Infrastructure Providers', 'View'],
+                                ['Infrastructure', 'Infrastructure Providers',
+                                    'Operate', 'Refresh']],
+                                {'Add infrastructure provider': _test_infra_provider_crud})
