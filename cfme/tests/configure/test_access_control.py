@@ -151,7 +151,7 @@ def test_assign_user_to_new_group():
     user = new_user(group=group)
     user.create()
 
-
+#Individual permission tests
 def _test_cloud_provider_crud():
     logger.info("Begin: _test_cloud_provider_crud")
     provider_utils.clear_cloud_providers()    # Start from baseline
@@ -199,14 +199,6 @@ def _mk_role(name=None, vm_restriction=None, product_features=None):
 def _go_to(dest):
     '''Create a thunk that navigates to the given destination'''
     return lambda: nav.go_to(dest)
-
-
-def _test_show_vms():
-    """Check that no VMs exists under user"""
-    user_vm_list = get_all_vms()
-    login.logout()
-    login.login_admin()
-    assert get_all_vms() == user_vm_list
 
 
 cat_name = version.pick({version.LOWEST: "Settings & Operations",
